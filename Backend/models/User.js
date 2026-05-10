@@ -34,7 +34,10 @@ const WalletSchema = new mongoose.Schema(
 const UserSchema = new mongoose.Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    passwordHash: { type: String, required: true },
+    passwordHash: { type: String }, // Optional for OAuth users
+    firebaseUid: { type: String, unique: true, sparse: true },
+    displayName: { type: String },
+    photoURL: { type: String },
     trial: { type: TrialSchema, required: true },
     usage: { type: UsageSchema, default: () => ({}) },
     wallet: { type: WalletSchema, default: () => ({}) },

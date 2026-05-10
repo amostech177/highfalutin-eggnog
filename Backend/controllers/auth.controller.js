@@ -13,11 +13,68 @@ const LoginSchema = z.object({
   password: z.string().min(1),
 });
 
+const GoogleAuthSchema = z.object({
+  firebaseUid: z.string(),
+  email: z.string().email(),
+  displayName: z.string().optional(),
+  photoURL: z.string().optional(),
+});
+
 function startTrial() {
   const startsAt = new Date();
   const endsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   return { startsAt, endsAt, caps: { funnelsPublished: 1, leads: 100, emails: 50 } };
 }
+
+export const googleAuth = async (req, res) => {
+  try {
+    const parsed = GoogleAuthSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, message: 'Invalid input' });
+
+    const { firebaseUid, email, displayName, photoURL } = parsed.data;
+    const lowerEmail = email.toLowerCase();
+
+    // Check if user exists by email
+    let user = await User.findOne({ email: lowerEmail });
+
+    if (user) {
+      // Update firebaseUid if not set
+      if (!user.firebaseUid) {
+        user.firebaseUid = firebaseUid;
+        if (displayName) user.displayName = displayName;
+        if (photoURL) user.photoURL = photoURL;
+        await user.save();
+      }
+    } else {
+      // Create new user with random password
+      const randomPassword = Math.random().toString(36).slice(-10);
+      const passwordHash = await bcrypt.hash(randomPassword, 10);
+      user = await User.create({
+        email: lowerEmail,
+        passwordHash,
+        firebaseUid,
+        displayName,
+        photoURL,
+        trial: startTrial(),
+      });
+    }
+
+    const token = jwt.sign({ sub: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+      },
+    });
+  } catch (err) {
+    console.error('Google auth error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
 
 export const register = async (req, res) => {
   try {

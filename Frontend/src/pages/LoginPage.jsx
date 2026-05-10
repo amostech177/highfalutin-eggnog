@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PropTypes from 'prop-types'
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
+import { app } from '../firebase'
 
 export default function LoginPage({ auth }) {
   const nav = useNavigate()
@@ -21,6 +23,35 @@ export default function LoginPage({ auth }) {
       nav('/')
     } catch (err) {
       setError(err.message || 'Failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setError('')
+    setBusy(true)
+    try {
+      const provider = new GoogleAuthProvider()
+      const firebaseAuth = getAuth(app)
+      const result = await signInWithPopup(firebaseAuth, provider)
+
+      console.log('Google User:', result.user)
+
+      const { uid, email, displayName, photoURL } = result.user
+
+      // Send to backend to create/get user and get JWT
+      const response = await auth.api('/api/auth/google', {
+        method: 'POST',
+        body: { firebaseUid: uid, email, displayName, photoURL }
+      })
+
+      // Login with backend token
+      auth.login(response.token, response.user)
+      nav('/')
+    } catch (err) {
+      console.error('Google login error:', err)
+      setError(err.message || 'Google login failed')
     } finally {
       setBusy(false)
     }
@@ -47,7 +78,12 @@ export default function LoginPage({ auth }) {
         {mode === 'login' ? 'Need an account? Register' : 'Already have an account? Login'}
       </button>
       <div>
-        <button className="continue-google">Continue with Google</button>
+        <button className="btn continue-google"
+          type="button"
+          onClick={handleGoogleLogin}
+          disabled={busy}>
+          Continue with Google
+        </button>
       </div>
     </div>
   )
