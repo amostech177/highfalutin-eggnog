@@ -48,7 +48,7 @@ export default function Dashboard({ auth }) {
     return (
       <div className="card">
         <h2>Welcome</h2>
-        <p>Build mobile-first funnels with a free trial, then pay as you go.</p>
+        <p>Ready to accelerate your sales online with a free trial, then you pay as you go.</p>
         <Link className="btn primary" to="/login">Get started</Link>
       </div>
     )
