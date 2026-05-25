@@ -86,7 +86,8 @@ export const publishFunnel = async (req, res) => {
 
   await incrementUsage(req.user.id, 'funnelsPublished', 1);
 
-  res.json({ success: true, funnel, publicUrl: `/p/${funnel.slug}` });
+  const publicUrl = `${process.env.PUBLIC_BASE_URL}/p/${funnel.slug}`;
+  res.json({ success: true, funnel, publicUrl });
 };
 
 export const deleteFunnel = async (req, res) => {

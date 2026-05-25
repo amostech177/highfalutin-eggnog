@@ -3,23 +3,26 @@ import { useNavigate, useParams } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import RenderBlock from '../components/RenderBlock'
 import Modal from '../components/Modal'
+import Toast from '../components/Toast'
 
 const DEFAULT_NOTIFICATION_TEMPLATE = {
   name: 'New Lead Notification',
   subject: 'New Lead: {{lead.firstName}} {{lead.lastName}}',
-  body: 'A new lead has been captured:\n\nName: {{lead.firstName}} {{lead.lastName}}\nEmail: {{lead.email}}\n\nView in dashboard: {{appUrl}}/leads'
+  htmlBody: 'A new lead has been captured:<br><br>Name: {{lead.firstName}} {{lead.lastName}}<br>Email: {{lead.email}}<br><br><a href="{{appUrl}}/leads">View in dashboard</a>',
+  textBody: 'A new lead has been captured:\n\nName: {{lead.firstName}} {{lead.lastName}}\nEmail: {{lead.email}}\n\nView in dashboard: {{appUrl}}/leads'
 }
 
 const DEFAULT_AUTORESPONDER_TEMPLATE = {
   name: 'Thank You Autoresponder',
   subject: 'Thank you for your interest!',
-  body: 'Hi {{lead.firstName}},\n\nThank you for your interest! We\'ll be in touch soon.\n\nBest regards,\nThe Team'
+  htmlBody: 'Hi {{lead.firstName}},<br><br>Thank you for your interest! We\'ll be in touch soon.<br><br>Best regards,<br>The Team',
+  textBody: 'Hi {{lead.firstName}},\n\nThank you for your interest! We\'ll be in touch soon.\n\nBest regards,\nThe Team'
 }
 
 function defaultProps(type) {
   if (type === 'heading') return { text: 'Your big promise' }
   if (type === 'text') return { text: 'A short description that sells the offer.' }
-  if (type === 'button') return { text: 'Get started', href: 'https://example.com' }
+  if (type === 'button') return { text: 'Get started', href: '' }
   if (type === 'leadForm') return { buttonText: 'Notify me' }
   return {}
 }
@@ -35,6 +38,7 @@ export default function FunnelEditor({ auth }) {
   const [saved, setSaved] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [creatingTemplate, setCreatingTemplate] = useState(false)
+  const [toast, setToast] = useState('')
 
   const load = useCallback(async () => {
     setError('')
@@ -68,12 +72,12 @@ export default function FunnelEditor({ auth }) {
      setSaved(false)
    }
    
-   // Auto-select appropriate template when enabling a checkbox
-const handleNotificationChange = async (e) => {
+    // Auto-select appropriate template when enabling a checkbox
+  const handleNotificationChange = async (e) => {
     const checked = e.target.checked
     updateFunnel({ ownerNotificationEnabled: checked })
     
-    if (checked && !funnel.ownerNotificationTemplateId) {
+    if (checked && funnel && !funnel.ownerNotificationTemplateId) {
       const defaultTemplate = templates.find(t => t.name === 'New Lead Notification')
       if (defaultTemplate) {
         updateFunnel({ ownerNotificationTemplateId: defaultTemplate._id })
@@ -83,11 +87,11 @@ const handleNotificationChange = async (e) => {
     }
   }
   
-  const handleAutoresponderChange = async (e) => {
+    const handleAutoresponderChange = async (e) => {
     const checked = e.target.checked
     updateFunnel({ autoresponderEnabled: checked })
     
-    if (checked && !funnel.autoresponderTemplateId) {
+    if (checked && funnel && !funnel.autoresponderTemplateId) {
       const defaultTemplate = templates.find(t => t.name === 'Thank You Autoresponder')
       if (defaultTemplate) {
         updateFunnel({ autoresponderTemplateId: defaultTemplate._id })
@@ -162,7 +166,8 @@ const addBlock = (type) => {
     try {
       const json = await auth.api(`/api/funnels/${id}/publish`, { method: 'POST' })
       setFunnel(json.funnel)
-      alert(`Published! Public path: ${json.publicUrl}`)
+      await navigator.clipboard.writeText(json.publicUrl)
+      setToast(`Published! Copied to clipboard: ${json.publicUrl}`)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -212,31 +217,34 @@ const addBlock = (type) => {
              />
              Notify me when a lead is captured
            </label>
-           {funnel.ownerNotificationEnabled && (
-             <div style={{ marginLeft: 24, marginTop: 8 }}>
-               <label>Notification template
-                  <select
-                    value={funnel.ownerNotificationTemplateId || ''}
-                    onChange={e => updateFunnel({ ownerNotificationTemplateId: e.target.value || null })}
-                    disabled={creatingTemplate}
-                  >
-                    <option value="">(no email — just capture the lead)</option>
-                    {templates.filter(t => t.name !== 'Thank You Autoresponder' && t.name !== 'njiniun').map(t => (
-                      <option key={t._id} value={t._id}>{t.name}</option>
-                    ))}
-                  </select>
-               </label>
-               {funnel.ownerNotificationTemplateId && (() => {
-                 const t = templates.find(t => t._id === funnel.ownerNotificationTemplateId)
-                 return t ? (
-                    <>
-                      <span className="templateBadge">{t.name}</span>
-                      <button className="linkBtn" onClick={() => nav(`/templates/${t._id}`)} disabled={creatingTemplate}>Edit template</button>
-                    </>
-                 ) : null
-               })()}
-             </div>
-           )}
+            {funnel.ownerNotificationEnabled && (
+              <div style={{ marginLeft: 24, marginTop: 8 }}>
+                <label>Notification template
+                   <select
+                     value={funnel.ownerNotificationTemplateId || ''}
+                     onChange={e => updateFunnel({ ownerNotificationTemplateId: e.target.value || null })}
+                     disabled={creatingTemplate}
+                   >
+                     <option value="">(no email — just capture the lead)</option>
+                     {templates.filter(t => t.name !== 'Thank You Autoresponder' && t.name !== 'njiniun').map(t => (
+                       <option key={t._id} value={t._id}>{t.name}</option>
+                     ))}
+                   </select>
+                </label>
+                <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                  [Info] Personalization variables available: {'{{lead}}'}, {'{{funnel}}'}, {'{{funnelUrl}}'}
+                </div>
+                {funnel.ownerNotificationTemplateId && (() => {
+                  const t = templates.find(t => t._id === funnel.ownerNotificationTemplateId)
+                  return t ? (
+                     <>
+                       <span className="templateBadge">{t.name}</span>
+                       <button className="linkBtn" onClick={() => nav(`/templates/${t._id}`)} disabled={creatingTemplate}>Edit template</button>
+                     </>
+                  ) : null
+                })()}
+              </div>
+            )}
 
            <label style={{ marginTop: 12 }}>
              <input
@@ -247,30 +255,33 @@ const addBlock = (type) => {
              />
              Send autoresponder to lead
            </label>
-           {funnel.autoresponderEnabled && (
-             <div style={{ marginLeft: 24, marginTop: 8 }}>
-               <label>Autoresponder template
-                  <select
-                    value={funnel.autoresponderTemplateId || ''}
-                    onChange={e => updateFunnel({ autoresponderTemplateId: e.target.value || null })}
-                    disabled={creatingTemplate}
-                  >
-                    {templates.filter(t => t.name !== 'New Lead Notification' && t.name !== 'njiniun').map(t => (
-                      <option key={t._id} value={t._id}>{t.name}</option>
-                    ))}
-                  </select>
-               </label>
-               {funnel.autoresponderTemplateId && (() => {
-                 const t = templates.find(t => t._id === funnel.autoresponderTemplateId)
-                 return t ? (
-                    <>
-                      <span className="templateBadge autoresponder">{t.name}</span>
-                      <button className="linkBtn" onClick={() => nav(`/templates/${t._id}`)} disabled={creatingTemplate}>Edit template</button>
-                    </>
-                 ) : null
-               })()}
-             </div>
-           )}
+            {funnel.autoresponderEnabled && (
+              <div style={{ marginLeft: 24, marginTop: 8 }}>
+                <label>Autoresponder template
+                   <select
+                     value={funnel.autoresponderTemplateId || ''}
+                     onChange={e => updateFunnel({ autoresponderTemplateId: e.target.value || null })}
+                     disabled={creatingTemplate}
+                   >
+                     {templates.filter(t => t.name !== 'New Lead Notification' && t.name !== 'njiniun').map(t => (
+                       <option key={t._id} value={t._id}>{t.name}</option>
+                     ))}
+                   </select>
+                </label>
+                <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                  💡 Personalization variables available: {'{{name}}'}, {'{{funnel}}'}, {'{{leadEmail}}'}, {'{{leadId}}'}, {'{{currentYear}}'}, {'{{unsubscribe_url}}'}
+                </div>
+                {funnel.autoresponderTemplateId && (() => {
+                  const t = templates.find(t => t._id === funnel.autoresponderTemplateId)
+                  return t ? (
+                     <>
+                       <span className="templateBadge">{t.name}</span>
+                       <button className="linkBtn" onClick={() => nav(`/templates/${t._id}`)} disabled={creatingTemplate}>Edit template</button>
+                     </>
+                  ) : null
+                })()}
+              </div>
+            )}
         </div>
       </div>
 
@@ -313,30 +324,31 @@ const addBlock = (type) => {
         {error ? <div className="error">{error}</div> : null}
       </div>
 
-      <Modal
-        isOpen={showDeleteModal}
-        onClose={() => !deleting && setShowDeleteModal(false)}
-        onConfirm={handleDelete}
-        title="Delete Funnel"
-        message={
-          <>
-            <p>Are you sure you want to delete <strong>&quot;{funnel?.name}&quot;</strong>?</p>
-            <p style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
-              This will permanently delete:
-            </p>
-            <ul style={{ fontSize: '14px', color: '#666', margin: '8px 0 0 20px' }}>
-              <li>All leads captured from this funnel</li>
-              <li>All campaigns associated with this funnel</li>
-              <li>The funnel itself</li>
-            </ul>
-          </>
-        }
-        confirmText="Delete"
-        cancelText="Cancel"
-        danger={true}
-        confirmDisabled={deleting}
-        loading={deleting}
-      />
+<Modal
+         isOpen={showDeleteModal}
+         onClose={() => !deleting && setShowDeleteModal(false)}
+         onConfirm={handleDelete}
+         title="Delete Funnel"
+         message={
+           <>
+             <p>Are you sure you want to delete <strong>&quot;{funnel?.name}&quot;</strong>?</p>
+             <p style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
+               This will permanently delete:
+             </p>
+             <ul style={{ fontSize: '14px', color: '#666', margin: '8px 0 0 20px' }}>
+               <li>All leads captured from this funnel</li>
+               <li>All campaigns associated with this funnel</li>
+               <li>The funnel itself</li>
+             </ul>
+           </>
+         }
+         confirmText="Delete"
+         cancelText="Cancel"
+         danger={true}
+         confirmDisabled={deleting}
+         loading={deleting}
+       />
+       <Toast message={toast} onClose={() => setToast('')} />
     </div>
   )
 }
