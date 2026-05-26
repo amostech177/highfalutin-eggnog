@@ -208,80 +208,90 @@ const addBlock = (type) => {
       <div className="card">
         <h3>Email Notifications</h3>
         <div className="form">
-           <label>
-             <input
-               type="checkbox"
-               checked={funnel.ownerNotificationEnabled || false}
-               onChange={handleNotificationChange}
-               disabled={creatingTemplate}
-             />
-             Notify me when a lead is captured
-           </label>
-            {funnel.ownerNotificationEnabled && (
-              <div style={{ marginLeft: 24, marginTop: 8 }}>
-                <label>Notification template
-                   <select
-                     value={funnel.ownerNotificationTemplateId || ''}
-                     onChange={e => updateFunnel({ ownerNotificationTemplateId: e.target.value || null })}
-                     disabled={creatingTemplate}
-                   >
-                     <option value="">(no email — just capture the lead)</option>
-                     {templates.filter(t => t.name !== 'Thank You Autoresponder' && t.name !== 'njiniun').map(t => (
-                       <option key={t._id} value={t._id}>{t.name}</option>
-                     ))}
-                   </select>
-                </label>
-                <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                  [Info] Personalization variables available: {'{{lead}}'}, {'{{funnel}}'}, {'{{funnelUrl}}'}
-                </div>
-                {funnel.ownerNotificationTemplateId && (() => {
-                  const t = templates.find(t => t._id === funnel.ownerNotificationTemplateId)
-                  return t ? (
-                     <>
-                       <span className="templateBadge">{t.name}</span>
-                       <button className="linkBtn" onClick={() => nav(`/templates/${t._id}`)} disabled={creatingTemplate}>Edit template</button>
-                     </>
-                  ) : null
-                })()}
-              </div>
-            )}
+            <label>
+              <input
+                type="checkbox"
+                checked={funnel.ownerNotificationEnabled || false}
+                onChange={handleNotificationChange}
+                disabled={creatingTemplate}
+              />
+              Notify me when a lead is captured
+            </label>
+             {funnel.ownerNotificationEnabled && (
+               <div style={{ marginLeft: 24, marginTop: 8 }}>
+                 <label>Notification template
+                    <select
+                      value={funnel.ownerNotificationTemplateId || ''}
+                      onChange={e => updateFunnel({ ownerNotificationTemplateId: e.target.value || null })}
+                      disabled={creatingTemplate}
+                    >
+                      <option value="">(no email — just capture the lead)</option>
+                      {templates
+                        .filter(t => t.name !== 'Thank You Autoresponder' && t.name !== 'njiniun')
+                        .filter((t, index, self) => 
+                          index === self.findIndex(t2 => t2.name === t.name)
+                        )
+                        .map(t => (
+                          <option key={t._id} value={t._id}>{t.name}</option>
+                        ))}
+                    </select>
+                 </label>
+                 <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                   [Info] Personalization variables available: {'{{lead}}'}, {'{{funnel}}'}, {'{{funnelUrl}}'}
+                 </div>
+                 {funnel.ownerNotificationTemplateId && (() => {
+                   const t = templates.find(t => t._id === funnel.ownerNotificationTemplateId)
+                   return t ? (
+                      <>
+                        <span className="templateBadge">{t.name}</span>
+                        <button className="linkBtn" onClick={() => nav(`/templates/${t._id}`)} disabled={creatingTemplate}>Edit template</button>
+                      </>
+                   ) : null
+                 })()}
+               </div>
+             )}
 
-           <label style={{ marginTop: 12 }}>
-             <input
-               type="checkbox"
-               checked={funnel.autoresponderEnabled || false}
-               onChange={handleAutoresponderChange}
-               disabled={creatingTemplate}
-             />
-             Send autoresponder to lead
-           </label>
-            {funnel.autoresponderEnabled && (
-              <div style={{ marginLeft: 24, marginTop: 8 }}>
-                <label>Autoresponder template
-                   <select
-                     value={funnel.autoresponderTemplateId || ''}
-                     onChange={e => updateFunnel({ autoresponderTemplateId: e.target.value || null })}
-                     disabled={creatingTemplate}
-                   >
-                     {templates.filter(t => t.name !== 'New Lead Notification' && t.name !== 'njiniun').map(t => (
-                       <option key={t._id} value={t._id}>{t.name}</option>
-                     ))}
-                   </select>
-                </label>
-                <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                  💡 Personalization variables available: {'{{name}}'}, {'{{funnel}}'}, {'{{leadEmail}}'}, {'{{leadId}}'}, {'{{currentYear}}'}, {'{{unsubscribe_url}}'}
-                </div>
-                {funnel.autoresponderTemplateId && (() => {
-                  const t = templates.find(t => t._id === funnel.autoresponderTemplateId)
-                  return t ? (
-                     <>
-                       <span className="templateBadge">{t.name}</span>
-                       <button className="linkBtn" onClick={() => nav(`/templates/${t._id}`)} disabled={creatingTemplate}>Edit template</button>
-                     </>
-                  ) : null
-                })()}
-              </div>
-            )}
+            <label style={{ marginTop: 12 }}>
+              <input
+                type="checkbox"
+                checked={funnel.autoresponderEnabled || false}
+                onChange={handleAutoresponderChange}
+                disabled={creatingTemplate}
+              />
+              Send autoresponder to lead
+            </label>
+             {funnel.autoresponderEnabled && (
+               <div style={{ marginLeft: 24, marginTop: 8 }}>
+                 <label>Autoresponder template
+                    <select
+                      value={funnel.autoresponderTemplateId || ''}
+                      onChange={e => updateFunnel({ autoresponderTemplateId: e.target.value || null })}
+                      disabled={creatingTemplate}
+                    >
+                      {templates
+                        .filter(t => t.name !== 'New Lead Notification' && t.name !== 'njiniun')
+                        .filter((t, index, self) => 
+                          index === self.findIndex(t2 => t2.name === t.name)
+                        )
+                        .map(t => (
+                          <option key={t._id} value={t._id}>{t.name}</option>
+                        ))}
+                    </select>
+                 </label>
+                 <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+                   💡 Personalization variables available: {'{{name}}'}, {'{{funnel}}'}, {'{{leadEmail}}'}, {'{{leadId}}'}, {'{{currentYear}}'}, {'{{unsubscribe_url}}'}
+                 </div>
+                 {funnel.autoresponderTemplateId && (() => {
+                   const t = templates.find(t => t._id === funnel.autoresponderTemplateId)
+                   return t ? (
+                      <>
+                        <span className="templateBadge">{t.name}</span>
+                        <button className="linkBtn" onClick={() => nav(`/templates/${t._id}`)} disabled={creatingTemplate}>Edit template</button>
+                      </>
+                   ) : null
+                 })()}
+               </div>
+             )}
         </div>
       </div>
 
