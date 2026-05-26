@@ -279,7 +279,7 @@ const addBlock = (type) => {
                     </select>
                  </label>
                  <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-                   💡 Personalization variables available: {'{{name}}'}, {'{{funnel}}'}, {'{{leadEmail}}'}, {'{{leadId}}'}, {'{{currentYear}}'}, {'{{unsubscribe_url}}'}
+                   Personalization variables available: {'{{name}}'}, {'{{funnel}}'}, {'{{leadEmail}}'}, {'{{leadId}}'}, {'{{currentYear}}'}, {'{{unsubscribe_url}}'}
                  </div>
                  {funnel.autoresponderTemplateId && (() => {
                    const t = templates.find(t => t._id === funnel.autoresponderTemplateId)
