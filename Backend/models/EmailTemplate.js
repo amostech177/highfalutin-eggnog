@@ -4,6 +4,7 @@ const EmailTemplateSchema = new mongoose.Schema(
   {
     ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     name: { type: String, required: true },
+    type: { type: String, enum: ['notification', 'autoresponder'], required: true, index: true },
     subject: { type: String, required: true },
     htmlBody: { type: String, required: true },
     textBody: { type: String, default: '' },

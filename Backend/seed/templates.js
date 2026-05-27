@@ -11,6 +11,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const DEFAULT_NOTIFICATION_TEMPLATE = {
   name: 'New Lead Notification',
+  type: 'notification',
   subject: '🆕 New lead captured: {{lead}} from {{funnel}}',
   htmlBody: `
     <!DOCTYPE html>
@@ -95,6 +96,7 @@ You can manage email notifications in your funnel settings.`,
 
 const DEFAULT_AUTORESPONDER_TEMPLATE = {
   name: 'Thank You Autoresponder',
+  type: 'autoresponder',
   subject: '{{name}}, your message has been received! Here\'s what\'s next...',
   htmlBody: `
     <!DOCTYPE html>
@@ -324,7 +326,7 @@ async function seedTemplates() {
     // Create/Update Notification Template
     let notifTemplate = await EmailTemplate.findOne({
       ownerId: adminUser._id,
-      name: 'New Lead Notification',
+      type: 'notification',
     });
 
     if (notifTemplate) {
@@ -349,7 +351,7 @@ async function seedTemplates() {
     // Create/Update Autoresponder Template
     let autoTemplate = await EmailTemplate.findOne({
       ownerId: adminUser._id,
-      name: 'Thank You Autoresponder',
+      type: 'autoresponder',
     });
 
     if (autoTemplate) {

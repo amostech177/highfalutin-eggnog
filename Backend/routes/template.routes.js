@@ -8,6 +8,7 @@ templateRouter.use(requireAuth);
 
 const CreateTemplateSchema = z.object({
   name: z.string().min(1),
+  type: z.enum(['notification', 'autoresponder']),
   subject: z.string().min(1),
   htmlBody: z.string().min(1),
   textBody: z.string().optional(),
@@ -21,6 +22,7 @@ templateRouter.post('/', async (req, res) => {
     const template = await EmailTemplate.create({
       ownerId: req.user.id,
       name: parsed.data.name,
+      type: parsed.data.type,
       subject: parsed.data.subject,
       htmlBody: parsed.data.htmlBody,
       textBody: parsed.data.textBody || '',
@@ -37,7 +39,7 @@ templateRouter.get('/', async (req, res) => {
   try {
     const templates = await EmailTemplate.find({ ownerId: req.user.id })
       .sort({ createdAt: -1 })
-      .select('name subject createdAt');
+      .select('name type subject createdAt');
 
     res.json({ success: true, templates });
   } catch (err) {
@@ -67,6 +69,7 @@ templateRouter.put('/:id', async (req, res) => {
       { _id: req.params.id, ownerId: req.user.id },
       {
         name: parsed.data.name,
+        type: parsed.data.type,
         subject: parsed.data.subject,
         htmlBody: parsed.data.htmlBody,
         textBody: parsed.data.textBody || '',
