@@ -35,14 +35,12 @@ campaignRouter.post('/', async (req, res) => {
       }
     }
 
-    // Covex funnelId string to ObjectId if provided
     let funnelIdObj = null;
     if (funnelId) {
-      try {
-        funnelIdObj = mongoose.Types.ObjectId(funnelId);
-      } catch (e) {
+      if (!mongoose.Types.ObjectId.isValid(funnelId)) {
         return res.status(400).json({ success: false, message: 'Invalid funnelId format' });
       }
+      funnelIdObj = new mongoose.Types.ObjectId(funnelId);
     }
 
      const campaign = await Campaign.create({

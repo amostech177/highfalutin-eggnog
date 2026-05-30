@@ -11,6 +11,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import { sendEmail } from './utils/resend.js';
 
 mongoose.connect(process.env.MONGODB_URI).then(() => {
   console.log('Connected to MongoDB!')
@@ -26,6 +27,63 @@ app.use(cors({
 }));
 
 app.get('/health', (req, res) => res.json({ ok: true }));
+
+app.get('/test-email', async (req, res) => {
+  await sendEmail({
+    to: "delivered@resend.dev",
+    subject: "Test",
+    html: "<h1>Hello</h1>"
+  });
+  res.send("Email sent");
+});
+
+app.get('/test-personalization', async (req, res) => {
+  const { name = "John", email = "test@example.com" } = req.query;
+
+  // Simulate template substitution
+  let template = "Hi {{name}}, your email is {{email}}";
+  template = template.replaceAll('{{name}}', name).replaceAll('{{email}}', email);
+
+  res.json({ success: true, template });
+});
+
+app.get('/test-tracking', (req, res) => {
+  const baseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:3000';
+  res.json({
+    openTrackUrl: `${baseUrl}/api/track/open?token=abc123`,
+    clickTrackUrl: `${baseUrl}/api/track/click?token=xyz789&url=https://example.com`,
+    unsubscribeUrl: `${baseUrl}/api/unsubscribe?token=xyz789&email=test%40example.com`,
+    note: "Open URL returns a 1x1 pixel; Click URL redirects; Unsubscribe records opt-out"
+  });
+});
+
+app.get('/test-simulate-tracking', async (req, res) => {
+  const { recipientId, type } = req.query;
+  if (!recipientId || !type) return res.status(400).json({ error: 'Missing recipientId or type' });
+
+  const { CampaignRecipient } = await import('./models/CampaignRecipient.js');
+  const recipient = await CampaignRecipient.findById(recipientId);
+  if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
+
+  if (type === 'open') {
+    recipient.openedAt = new Date();
+    recipient.status = 'opened';
+    await recipient.save();
+    // Update campaign open count
+    const { Campaign } = await import('./models/Campaign.js');
+    await Campaign.updateOne({ _id: recipient.campaignId }, { $inc: { openCount: 1 } });
+    res.json({ success: true, message: 'Open tracked' });
+  } else if (type === 'click') {
+    recipient.clickedAt = new Date();
+    recipient.status = 'clicked';
+    await recipient.save();
+    const { Campaign } = await import('./models/Campaign.js');
+    await Campaign.updateOne({ _id: recipient.campaignId }, { $inc: { clickCount: 1 } });
+    res.json({ success: true, message: 'Click tracked' });
+  } else {
+    res.status(400).json({ error: 'Invalid type (use "open" or "click")' });
+  }
+});
 
 import { authRouter } from './routes/auth.routes.js';
 import { funnelRouter } from './routes/funnel.routes.js';

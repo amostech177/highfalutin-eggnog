@@ -8,6 +8,7 @@ export default function CampaignList({ auth }) {
   const [error, setError] = useState('')
   const nav = useNavigate()
   const [cancelModal, setCancelModal] = useState({ open: false, campaignId: null, loading: false })
+  const [sendModal, setSendModal] = useState({ open: false, campaignId: null, loading: false })
   const [deleteModal, setDeleteModal] = useState({ open: false, campaignId: null, loading: false })
 
   const load = useCallback(async () => {
@@ -23,13 +24,18 @@ export default function CampaignList({ auth }) {
     load()
   }, [load])
 
-  const send = async (id) => {
-    if (!confirm('Send this campaign now?')) return
+  const openSendModal = (id) => {
+    setSendModal({ open: true, campaignId: id, loading: false })
+  }
+
+  const confirmSend = async () => {
+    setSendModal(prev => ({ ...prev, loading: true }))
     try {
-      await auth.api(`/api/campaigns/${id}/send`, { method: 'POST' })
-      alert('Campaign started')
+      await auth.api(`/api/campaigns/${sendModal.campaignId}/send`, { method: 'POST' })
+      setSendModal({ open: false, campaignId: null, loading: false })
       load()
     } catch (e) {
+      setSendModal(prev => ({ ...prev, loading: false }))
       alert(e.message)
     }
   }
@@ -101,7 +107,7 @@ export default function CampaignList({ auth }) {
                   <td>
                     {c.status === 'draft' || c.status === 'scheduled' ? (
                       <>
-                        <button className="btn" onClick={() => send(c._id)}>Send</button>
+                        <button className="btn" onClick={() => openSendModal(c._id)}>Send</button>
                         <button className="btn" onClick={() => openCancelModal(c._id)}>Cancel</button>
                       </>
                     ) : null}
@@ -140,6 +146,18 @@ export default function CampaignList({ auth }) {
         cancelText="Cancel"
         danger={true}
         confirmDisabled={deleteModal.loading}
+      />
+
+      <Modal
+        isOpen={sendModal.open}
+        onClose={() => setSendModal({ open: false, campaignId: null, loading: false })}
+        onConfirm={confirmSend}
+        title="Send Campaign"
+        message="Are you sure you want to send this campaign? This cannot be undone."
+        confirmText={sendModal.loading ? 'Sending…' : 'Send'}
+        cancelText="Cancel"
+        danger={true}
+        confirmDisabled={sendModal.loading}
       />
     </div>
   )
