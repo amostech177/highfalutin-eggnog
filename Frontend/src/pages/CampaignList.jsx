@@ -81,30 +81,52 @@ export default function CampaignList({ auth }) {
       {error ? <div className="error">{error}</div> : null}
       <div className="card">
         {campaigns.length ? (
-          <table style={{ width: '100%', textAlign: 'left' }}>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Sent</th>
-                <th>Delivered</th>
-                <th>Opens</th>
-                <th>Clicks</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            <table className="campaign-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Sent</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campaigns.map(c => (
+                  <tr key={c._id}>
+                    <td>
+                      <a href="#" onClick={(e) => { e.preventDefault(); nav(`/campaigns/${c._id}`) }}>{c.name}</a>
+                    </td>
+                    <td>{c.status}</td>
+                    <td>{c.sentCount}</td>
+                    <td>
+                      {c.status === 'draft' || c.status === 'scheduled' ? (
+                        <>
+                          <button className="btn" onClick={() => openSendModal(c._id)}>Send</button>
+                          <button className="btn" onClick={() => openCancelModal(c._id)}>Cancel</button>
+                        </>
+                      ) : null}
+                      {c.status === 'cancelled' ? (
+                        <button className="btn danger" onClick={() => openDeleteModal(c._id)}>Delete</button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="campaign-cards">
               {campaigns.map(c => (
-                <tr key={c._id}>
-                  <td>
-                    <a href="#" onClick={(e) => { e.preventDefault(); nav(`/campaigns/${c._id}`) }}>{c.name}</a>
-                  </td>
-                  <td>{c.status}</td>
-                  <td>{c.sentCount}</td>
-                  <td>{c.deliveredCount}</td>
-                  <td>{c.openCount}</td>
-                  <td>{c.clickCount}</td>
-                  <td>
+                <div key={c._id} className="campaign-card-item">
+                  <div className="campaign-card-header">
+                    <a href="#" onClick={(e) => { e.preventDefault(); nav(`/campaigns/${c._id}`) }} className="campaign-card-name">{c.name}</a>
+                    <span className={`campaign-status status-${c.status}`}>{c.status}</span>
+                  </div>
+                  <div className="campaign-stats">
+                    <span>Sent: {c.sentCount}</span>
+                    <span>Delivered: {c.deliveredCount}</span>
+                    <span>Opens: {c.openCount}</span>
+                  </div>
+                  <div className="campaign-actions">
                     {c.status === 'draft' || c.status === 'scheduled' ? (
                       <>
                         <button className="btn" onClick={() => openSendModal(c._id)}>Send</button>
@@ -114,11 +136,11 @@ export default function CampaignList({ auth }) {
                     {c.status === 'cancelled' ? (
                       <button className="btn danger" onClick={() => openDeleteModal(c._id)}>Delete</button>
                     ) : null}
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         ) : (
           <div className="muted">No campaigns. <button className="linkBtn" onClick={() => nav('/campaigns/new')}>Create your first</button></div>
         )}

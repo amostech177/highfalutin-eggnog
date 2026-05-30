@@ -54,12 +54,12 @@ export default function Dashboard({ auth }) {
     )
   }
 
-  return (
+return (
     <div className="stack">
       {error ? <div className="error">{error}</div> : null}
       <div className="card">
         <h2>Billing</h2>
-        <div className="row">
+        <div className="row wrap">
           <div><strong>Wallet</strong>: {me?.wallet?.balance ?? 0} credits</div>
           <div><strong>{me?.trial?.endsAt && +new Date(me.trial.endsAt) <= Date.now() ? 'Trial ended on' : 'Trial ends'}</strong>: {me?.trial?.endsAt ? new Date(me.trial.endsAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}</div>
         </div>
@@ -100,30 +100,30 @@ export default function Dashboard({ auth }) {
         </div>
       </div>
 
-<Modal
-         isOpen={deleteModal.open}
-         onClose={() => !deleteModal.loading && setDeleteModal({ open: false, funnelId: null, funnelName: '', loading: false })}
-         onConfirm={confirmDelete}
-         title="Delete Funnel"
-         message={
-           <>
-             <p>Are you sure you want to delete <strong>&quot;{deleteModal.funnelName}&quot;</strong>?</p>
-             <p style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
-               This will permanently delete:
-             </p>
-             <ul style={{ fontSize: '14px', color: '#666', margin: '8px 0 0 20px' }}>
-               <li>All leads captured from this funnel</li>
-               <li>All campaigns associated with this funnel</li>
-               <li>The funnel itself</li>
-             </ul>
-           </>
-         }
-         confirmText="Delete"
-         cancelText="Cancel"
-         danger={true}
-         confirmDisabled={deleteModal.loading}
-         loading={deleteModal.loading}
-       />
+      <Modal
+        isOpen={deleteModal.open}
+        onClose={() => !deleteModal.loading && setDeleteModal({ open: false, funnelId: null, funnelName: '', loading: false })}
+        onConfirm={confirmDelete}
+        title="Delete Funnel"
+        message={
+          <>
+            <p>Are you sure you want to delete <strong>&quot;{deleteModal.funnelName}&quot;</strong>?</p>
+            <p style={{ fontSize: '14px', color: '#666', marginTop: '8px' }}>
+              This will permanently delete:
+            </p>
+            <ul style={{ fontSize: '14px', color: '#666', margin: '8px 0 0 20px' }}>
+              <li>All leads captured from this funnel</li>
+              <li>All campaigns associated with this funnel</li>
+              <li>The funnel itself</li>
+            </ul>
+          </>
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        danger={true}
+        confirmDisabled={deleteModal.loading}
+        loading={deleteModal.loading}
+      />
     </div>
   )
 }

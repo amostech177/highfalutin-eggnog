@@ -34,7 +34,7 @@ export default function CampaignDetail({ auth }) {
       </div>
 
       <div className="card">
-        <div className="row">
+        <div className="row wrap">
           <div><strong>Status:</strong> {campaign.status}</div>
           <div><strong>Sent:</strong> {campaign.sentCount}</div>
           <div><strong>Delivered:</strong> {campaign.deliveredCount}</div>
@@ -47,22 +47,31 @@ export default function CampaignDetail({ auth }) {
       <div className="card">
         <h3>Recipients ({recipients.length})</h3>
         {recipients.length ? (
-          <table style={{ width: '100%', textAlign: 'left' }}>
-            <thead>
-              <tr><th>Email</th><th>Name</th><th>Status</th><th>Opened</th><th>Clicked</th></tr>
-            </thead>
-            <tbody>
+          <>
+            <table className="recipients-table">
+              <thead>
+                <tr><th>Email</th><th>Name</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                {recipients.map(r => (
+                  <tr key={r._id}>
+                    <td>{r.recipientEmail}</td>
+                    <td>{r.recipientName}</td>
+                    <td>{r.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="recipients-cards">
               {recipients.map(r => (
-                <tr key={r._id}>
-                  <td>{r.recipientEmail}</td>
-                  <td>{r.recipientName}</td>
-                  <td>{r.status}</td>
-                  <td>{r.openedAt ? new Date(r.openedAt).toLocaleString() : '—'}</td>
-                  <td>{r.clickedAt ? new Date(r.clickedAt).toLocaleString() : '—'}</td>
-                </tr>
+                <div key={r._id} className="recipient-card-item">
+                  <div className="recipient-email">{r.recipientEmail}</div>
+                  <div className="recipient-name">{r.recipientName}</div>
+                  <div className={`recipient-status status-${r.status}`}>{r.status}</div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         ) : <div className="muted">No recipients yet</div>}
       </div>
     </div>
