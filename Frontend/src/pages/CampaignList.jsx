@@ -130,10 +130,11 @@ export default function CampaignList({ auth }) {
         onConfirm={confirmCancel}
         title="Cancel Campaign"
         message="Are you sure you want to cancel this campaign?"
-        confirmText={cancelModal.loading ? 'Cancelling…' : 'Cancel'}
+        confirmText="Cancel"
         cancelText="Cancel"
         danger={true}
         confirmDisabled={cancelModal.loading}
+        loading={cancelModal.loading}
       />
 
       <Modal
@@ -142,10 +143,11 @@ export default function CampaignList({ auth }) {
         onConfirm={confirmDelete}
         title="Delete Campaign"
         message="Are you sure you want to delete this cancelled campaign? This cannot be undone."
-        confirmText={deleteModal.loading ? 'Deleting…' : 'Delete'}
+        confirmText="Delete"
         cancelText="Cancel"
         danger={true}
         confirmDisabled={deleteModal.loading}
+        loading={deleteModal.loading}
       />
 
       <Modal
@@ -154,10 +156,11 @@ export default function CampaignList({ auth }) {
         onConfirm={confirmSend}
         title="Send Campaign"
         message="Are you sure you want to send this campaign? This cannot be undone."
-        confirmText={sendModal.loading ? 'Sending…' : 'Send'}
+        confirmText="Send"
         cancelText="Cancel"
         danger={true}
         confirmDisabled={sendModal.loading}
+        loading={sendModal.loading}
       />
     </div>
   )

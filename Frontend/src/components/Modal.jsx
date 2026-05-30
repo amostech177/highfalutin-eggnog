@@ -74,7 +74,7 @@ export default function Modal({ isOpen, onClose, onConfirm, title, message, conf
               opacity: confirmDisabled ? 0.6 : 1,
             }}
           >
-            {loading ? 'Deleting…' : confirmText}
+            {loading ? `${confirmText}…` : confirmText}
           </button>
         </div>
       </div>
