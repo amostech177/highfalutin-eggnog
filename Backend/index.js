@@ -13,10 +13,18 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import { sendEmail } from './utils/resend.js';
 
-mongoose.connect(process.env.MONGODB_URI).then(() => {
+const mongoUri = process.env.MONGODB_URI;
+const safeMongoUri = mongoUri
+  ? mongoUri.replace(/:\/\/([^:]+):([^@]+)@/, (_, user, pass) => `://${user}:${encodeURIComponent(pass)}@`)
+  : mongoUri;
+
+mongoose.connect(safeMongoUri, {
+  family: 4,
+  serverSelectionTimeoutMS: 15000,
+}).then(() => {
   console.log('Connected to MongoDB!')
 }).catch((err) => {
-  console.log(err);
+  console.error('MongoDB connection error:', err.message);
 });
 
 const app = express();

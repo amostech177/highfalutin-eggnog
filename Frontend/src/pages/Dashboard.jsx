@@ -63,6 +63,15 @@ return (
           <div><strong>Wallet</strong>: {me?.wallet?.balance ?? 0} credits</div>
           <div><strong>{me?.trial?.endsAt && +new Date(me.trial.endsAt) <= Date.now() ? 'Trial ended on' : 'Trial ends'}</strong>: {me?.trial?.endsAt ? new Date(me.trial.endsAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}</div>
         </div>
+        <div className="muted" style={{ margin: '8px 0', fontSize: '14px' }}>
+          <strong>What 1 credit covers:</strong><br />
+          &bull; 1 email sent<br />
+          &bull; 1 new lead captured<br />
+          &bull; 1 funnel published
+        </div>
+        <div className="muted" style={{ marginBottom: 12, fontSize: '14px' }}>
+          <strong>Credit rate:</strong> KSh 15 = 1 credit
+        </div>
         <button className="btn" onClick={() => nav('/topup')}>Top up with M-Pesa</button>
       </div>
 

@@ -126,7 +126,7 @@ billingRouter.post('/daraja/topup', requireAuth, async (req, res) => {
     BusinessShortCode: shortcode,
     Password: password,
     Timestamp: timestamp,
-    TransactionType: "CustomerPayBillOnline",
+    TransactionType: "CustomerBuyGoodsOnline",
     Amount: amount,
     PartyA: formattedPhone,
     PartyB: shortcode,
@@ -203,7 +203,6 @@ async function getDarajaToken() {
     const { data } = await axios.get('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
       headers: { 
         Authorization: `Basic ${auth}`,
-        "Content-Type": "application/json"
       },
     });
     if (!data.access_token) {
@@ -260,13 +259,15 @@ billingRouter.post('/daraja/callback', express.json(), async (req, res) => {
 
     if (!mpesaReceipt || !amount) return;
 
+    const creditAmount = Math.floor(amount / 15);
+    if (creditAmount <= 0) return;
     const reference = `mpesa:${mpesaReceipt || checkoutRequestId}`;
     await creditWallet({
       userId: pending.userId.toString(),
-      amount,
+      amount: creditAmount,
       reason: 'mpesa_topup',
       reference,
-      meta: { checkoutRequestId, mpesaReceipt, amount, merchantRequestId },
+      meta: { checkoutRequestId, mpesaReceipt, amount, merchantRequestId, rate: 'KSh15=1credit' },
     });
   } catch (e) {
     console.error('Daraja callback error', e);

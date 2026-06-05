@@ -121,21 +121,23 @@ export const darajaTopup = async (req, res) => {
     const { data } = await axios.post(
       'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
       {
-        BusinessShortCode: '174379',
+        BusinessShortCode: shortcode,
         Password: password,
         Timestamp: timestamp,
         TransactionType: 'CustomerPayBillOnline',
         Amount: amount,
-        PartyA: '254113771886',  // phone number to receive the stk push
-        PartyB: '174379',
-        PhoneNumber: '254113771886',
+        PartyA: phone,
+        PartyB: shortcode,
+        PhoneNumber: phone,
         CallBackURL: `${process.env.PUBLIC_BASE_URL}/api/billing/daraja/callback`,
         AccountReference: accountRef,
         TransactionDesc: `Top up ${amount} KES`,
       },
       {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`,
         "Content-Type": "application/json"
+      },
+        
       }
     );
 
@@ -149,13 +151,12 @@ export const darajaTopup = async (req, res) => {
     });
 
     res.json({ success: true, checkoutRequestId: data.CheckoutRequestID, customerMessage: data.CustomerMessage });
-  } catch (error) {
-    console.error('Daraja STK push error:', error.response?.data || error.message);
-    // If the error is due to invalid token, we might want to return 401
+   } catch (error) {
+    console.error('Daraja STK push error:', JSON.stringify(error.response?.data, null, 2));
     if (error.response && error.response.status === 401) {
-      return res.status(401).json({ success: false, message: 'Invalid auth token' });
+      return res.status(401).json({ success: false, message: 'Invalid auth token', details: error.response?.data });
     }
-    return res.status(500).json({ success: false, message: 'Failed to initiate top up' });
+    return res.status(500).json({ success: false, message: 'Failed to initiate top up', details: error.response?.data });
   }
 };
 
