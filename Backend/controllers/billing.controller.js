@@ -58,8 +58,21 @@ export const sendEmail = async (req, res) => {
 
 const TopupSchema = z.object({
   phone: z.string().min(10),
-  amountKes: z.number().int().min(1),
+  amountKes: z.number().int().min(1).max(70000),
 });
+
+function formatPhoneNumber(phone) {
+  let formatted = phone.replace(/\D/g, '');
+  if (formatted.startsWith('0')) {
+    formatted = '254' + formatted.substring(1);
+  } else if (formatted.startsWith('7') && formatted.length === 9) {
+    formatted = '254' + formatted;
+  } else if (formatted.startsWith('254') && formatted.length === 12) {
+  } else if (formatted.startsWith('+254')) {
+    formatted = formatted.substring(1);
+  }
+  return formatted;
+}
 
 async function getDarajaToken() {
   const key = process.env.SAFARICOM_CONSUMER_KEY;
@@ -93,70 +106,113 @@ function darajaTimestamp() {
 }
 
 export const darajaTopup = async (req, res) => {
-  const parsed = TopupSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ success: false, message: 'Invalid input' });
-
-  const shortcode = process.env.DARAJA_TILL_SHORTCODE;
-  const passkey = process.env.DARAJA_PASSKEY;
-  const callbackUrlBase = process.env.PUBLIC_BASE_URL;
-  if (!shortcode || !passkey || !callbackUrlBase) {
-    return res.status(500).json({ success: false, message: 'Daraja not configured on server' });
-  }
-
-  const timestamp = darajaTimestamp();
-  const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
-  let token;
   try {
-    token = await getDarajaToken();
-  } catch (error) {
-    console.error('Failed to get Daraja token:', error.message);
-    return res.status(500).json({ success: false, message: 'Failed to authenticate with Daraja' });
-  }
+    const parsed = TopupSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ success: false, message: 'Invalid input', errors: parsed.error.errors });
 
-  const accountRef = `topup-${req.user.id}`;
-  const amount = parsed.data.amountKes;
-  const phone = parsed.data.phone;
+    const shortcode = process.env.DARAJA_TILL_SHORTCODE;
+    const passkey = process.env.DARAJA_PASSKEY;
+    const callbackUrlBase = process.env.PUBLIC_BASE_URL;
+    if (!shortcode || !passkey || !callbackUrlBase) {
+      return res.status(500).json({
+        success: false,
+        message: 'Daraja not configured on server',
+        missing: {
+          shortcode: !shortcode,
+          passkey: !passkey,
+          callbackUrlBase: !callbackUrlBase
+        }
+      });
+    }
 
-  try {
+    console.log('Daraja config:', {
+      shortcode,
+      callbackUrlBase,
+      fullCallbackUrl: `${callbackUrlBase}/api/billing/daraja/callback`,
+      phone: parsed.data.phone
+    });
+
+    const timestamp = darajaTimestamp();
+    const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
+    let token;
+    try {
+      token = await getDarajaToken();
+    } catch (error) {
+      console.error('Failed to get Daraja token:', error.message);
+      return res.status(500).json({ success: false, message: 'Failed to authenticate with Daraja' });
+    }
+
+    const accountRef = `topup-${req.user.id}`;
+    const amount = parsed.data.amountKes;
+    const formattedPhone = formatPhoneNumber(parsed.data.phone);
+
+    const payload = {
+      BusinessShortCode: shortcode,
+      Password: password,
+      Timestamp: timestamp,
+      TransactionType: "CustomerPayBillOnline",
+      Amount: amount,
+      PartyA: formattedPhone,
+      PartyB: shortcode,
+      PhoneNumber: formattedPhone,
+      CallBackURL: `${process.env.PUBLIC_BASE_URL}/api/billing/daraja/callback`,
+      AccountReference: accountRef,
+      TransactionDesc: `Top up ${amount} KES`,
+    };
+
+    console.log('Daraja STK Push payload (password omitted):', {
+      ...payload,
+      Password: '***'
+    });
+
     const { data } = await axios.post(
-      'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest',
+      "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+      payload,
       {
-        BusinessShortCode: shortcode,
-        Password: password,
-        Timestamp: timestamp,
-        TransactionType: 'CustomerPayBillOnline',
-        Amount: amount,
-        PartyA: phone,
-        PartyB: shortcode,
-        PhoneNumber: phone,
-        CallBackURL: `${process.env.PUBLIC_BASE_URL}/api/billing/daraja/callback`,
-        AccountReference: accountRef,
-        TransactionDesc: `Top up ${amount} KES`,
-      },
-      {
-        headers: { Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-        
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
       }
     );
 
+    if (!data.CheckoutRequestID) {
+      console.error('Daraja response missing CheckoutRequestID:', JSON.stringify(data, null, 2));
+      throw new Error('Invalid response from Daraja - missing CheckoutRequestID');
+    }
+
     await PendingTopup.create({
       userId: req.user.id,
-      phone,
+      phone: formattedPhone,
       amountKes: amount,
       checkoutRequestId: data.CheckoutRequestID,
       merchantRequestId: data.MerchantRequestID ?? '',
       status: 'pending',
     });
 
-    res.json({ success: true, checkoutRequestId: data.CheckoutRequestID, customerMessage: data.CustomerMessage });
-   } catch (error) {
-    console.error('Daraja STK push error:', JSON.stringify(error.response?.data, null, 2));
-    if (error.response && error.response.status === 401) {
-      return res.status(401).json({ success: false, message: 'Invalid auth token', details: error.response?.data });
+    res.json({
+      success: true,
+      checkoutRequestId: data.CheckoutRequestID,
+      customerMessage: data.CustomerMessage
+    });
+  } catch (error) {
+    console.error('=== DARAJA TOPUP ERROR START ===');
+    console.error('Error details:', error);
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Headers:', JSON.stringify(error.response.headers, null, 2));
+      console.error('Data:', JSON.stringify(error.response.data, null, 2));
+    } else {
+      console.error('No response - message:', error.message);
+      console.error('Stack:', error.stack);
     }
-    return res.status(500).json({ success: false, message: 'Failed to initiate top up', details: error.response?.data });
+    console.error('=== DARAJA TOPUP ERROR END ===');
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to initiate Daraja payment',
+      details: error.response?.data || error.message,
+      statusCode: error.response?.status
+    });
   }
 };
 
@@ -194,13 +250,15 @@ export const darajaCallback = async (req, res) => {
 
     if (!mpesaReceipt || !amount) return;
 
+    const creditAmount = Math.floor(amount / 15);
+    if (creditAmount <= 0) return;
     const reference = `mpesa:${mpesaReceipt || checkoutRequestId}`;
     await creditWallet({
       userId: pending.userId.toString(),
-      amount,
+      amount: creditAmount,
       reason: 'mpesa_topup',
       reference,
-      meta: { checkoutRequestId, mpesaReceipt, amount, merchantRequestId },
+      meta: { checkoutRequestId, mpesaReceipt, amount, merchantRequestId, rate: 'KSh15=1credit' },
     });
   } catch (e) {
     console.error('Daraja callback error', e);

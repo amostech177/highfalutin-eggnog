@@ -34,7 +34,7 @@ export default function useAuth() {
         body: body ? JSON.stringify(body) : undefined,
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json?.message || 'Request failed')
+      if (!res.ok) throw { message: json?.message || 'Request failed', details: json?.details }
       return json
     }
   }, [token])

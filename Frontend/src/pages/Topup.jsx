@@ -37,7 +37,8 @@ export default function Topup({ auth }) {
       const json = await auth.api('/api/billing/daraja/topup', { method: 'POST', body: { phone, amountKes: snappedKes } })
       setMsg(json.customerMessage || `STK sent. CheckoutRequestID: ${json.checkoutRequestId}`)
     } catch (e2) {
-      setErr(e2.message)
+      const errorMsg = e2.details?.errorMessage || e2.message || 'Unknown error'
+      setErr(errorMsg)
     }
   }
 
@@ -68,11 +69,11 @@ export default function Topup({ auth }) {
           inputMode="numeric"
           placeholder="e.g. 20"
         />
-        <div className="muted" style={{ margin: '8px 0', fontSize: '14px' }}>
-          You&amp;apos;ll receive: <strong style={{ color: '#000' }}>{credits} credit{credits !== 1 ? 's' : ''}</strong> &mdash; worth {credits} emails / {credits} leads / {credits} funnels
-        </div>
-        <button className="btn primary" disabled={!phone || !credits}>Send STK</button>
-      </form>
+<div className="muted" style={{ margin: '8px 0', fontSize: '14px' }}>
+           You&apos;ll receive: <strong style={{ color: '#000' }}>{credits} credit{credits !== 1 ? 's' : ''}</strong> &mdash; worth {credits} emails / {credits} leads / {credits} funnels
+         </div>
+         <button className="btn primary" disabled={!phone || !credits}>Send STK</button>
+       </form>
       {msg ? <div className="success" style={{ marginTop: 12 }}>{msg}</div> : null}
       {err ? <div className="error" style={{ marginTop: 12 }}>{err}</div> : null}
     </div>

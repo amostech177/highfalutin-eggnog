@@ -18,17 +18,24 @@ const safeMongoUri = mongoUri
   ? mongoUri.replace(/:\/\/([^:]+):([^@]+)@/, (_, user, pass) => `://${user}:${encodeURIComponent(pass)}@`)
   : mongoUri;
 
+const app = express();
+app.use(express.json());
+
 mongoose.connect(safeMongoUri, {
   family: 4,
   serverSelectionTimeoutMS: 15000,
 }).then(() => {
-  console.log('Connected to MongoDB!')
+  console.log('Connected to MongoDB!');
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
+    console.log(`Daraja token endpoint: http://localhost:${PORT}/token`);
+  });
 }).catch((err) => {
   console.error('MongoDB connection error:', err.message);
+  console.error('Server will NOT start until MongoDB is reachable.');
+  process.exit(1);
 });
-
-const app = express();
-app.use(express.json());
 app.use(cors({
   origin: process.env.CORS_ORIGIN?.split(',').map(s => s.trim()).filter(Boolean) ?? '*',
   credentials: true,
@@ -251,9 +258,3 @@ if (missing.length > 0) {
 if (process.env.PUBLIC_BASE_URL?.includes('ngrok-free.dev')) {
   console.warn('⚠️  Ngrok URL detected - these expire after a few hours. Get a fresh ngrok URL at https://ngrok.com');
 }
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Daraja token endpoint: http://localhost:${PORT}/token`);
-})

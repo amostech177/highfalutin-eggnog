@@ -27,26 +27,21 @@ function startTrial() {
 }
 
 export const googleAuth = async (req, res) => {
+  console.log('[googleAuth] Received request, body keys:', Object.keys(req.body || {}));
   try {
     const parsed = GoogleAuthSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ success: false, message: 'Invalid input' });
+    if (!parsed.success) {
+      console.error('[googleAuth] Validation failed:', parsed.error.errors);
+      return res.status(400).json({ success: false, message: 'Invalid input', errors: parsed.error.errors });
+    }
 
     const { firebaseUid, email, displayName, photoURL } = parsed.data;
     const lowerEmail = email.toLowerCase();
+    console.log('[googleAuth] Looking up user:', lowerEmail);
 
-    // Check if user exists by email
     let user = await User.findOne({ email: lowerEmail });
 
-    if (user) {
-      // Update firebaseUid if not set
-      if (!user.firebaseUid) {
-        user.firebaseUid = firebaseUid;
-        if (displayName) user.displayName = displayName;
-        if (photoURL) user.photoURL = photoURL;
-        await user.save();
-      }
-    } else {
-      // Create new user with random password
+    if (!user) {
       const randomPassword = Math.random().toString(36).slice(-10);
       const passwordHash = await bcrypt.hash(randomPassword, 10);
       user = await User.create({
@@ -57,9 +52,19 @@ export const googleAuth = async (req, res) => {
         photoURL,
         trial: startTrial(),
       });
+      console.log('[googleAuth] Created user:', user._id);
+    } else {
+      if (!user.firebaseUid) {
+        user.firebaseUid = firebaseUid;
+        if (displayName) user.displayName = displayName;
+        if (photoURL) user.photoURL = photoURL;
+        await user.save();
+        console.log('[googleAuth] Updated user with firebaseUid');
+      }
     }
 
     const token = jwt.sign({ sub: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    console.log('[googleAuth] Returning success for user:', user._id);
     res.json({
       success: true,
       token,
@@ -71,7 +76,7 @@ export const googleAuth = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('Google auth error:', err);
+    console.error('[googleAuth] Error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
