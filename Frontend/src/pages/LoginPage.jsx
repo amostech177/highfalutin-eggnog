@@ -33,6 +33,7 @@ export default function LoginPage({ auth }) {
     setBusy(true)
     try {
       const provider = new GoogleAuthProvider()
+      provider.setCustomParameters({ prompt: 'select_account' })
       const firebaseAuth = getAuth(app)
       const result = await signInWithPopup(firebaseAuth, provider)
 
