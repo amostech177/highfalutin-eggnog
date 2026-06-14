@@ -149,7 +149,7 @@ const DEFAULT_AUTORESPONDER_TEMPLATE = {
                       <tr>
                         <td>
                           <p style="margin: 0 0 8px; font-size: 15px; color: #166534; font-weight: 600;">
-                            ✅ We've received your message
+                            We've received your message
                           </p>
                           <p style="margin: 0; font-size: 14px; color: #166534; line-height: 1.6;">
                             One of our team members will review your inquiry and get back to you shortly. We take every message seriously.
@@ -271,7 +271,7 @@ Thank you for reaching out to {{funnel}}! We've received your message and will r
 📋 WHAT TO EXPECT
 ━━━━━━━━━━━━━━━━━━━━━━━━━
 
-✅ Confirmed — We've received your inquiry
+Confirmed — We've received your inquiry
 
 ⏰ Response Time: Within 24 hours (business days)
 💬 Questions? Simply reply to this email
@@ -305,7 +305,7 @@ async function seedTemplates() {
     }
 
     await mongoose.connect(mongoUri);
-    console.log('✅ Connected to MongoDB');
+    console.log('Connected to MongoDB');
 
     // Get or create admin user to assign templates to
     // We need a user ID - let's find any user or create a system user
@@ -314,13 +314,13 @@ async function seedTemplates() {
     let adminUser = await User.findOne({ email: /@example\.com$/ }) || await User.findOne();
     
     if (!adminUser) {
-      console.warn('⚠️  No users found in database. Creating a default system user...');
+      console.warn('No users found in database. Creating a default system user...');
       adminUser = await User.create({
         email: 'system@funnelbuilder.local',
         password: 'placeholder', // Won't be used
         name: 'System',
       });
-      console.log('✅ Created system user');
+      console.log('Created system user');
     }
 
     // Create/Update Notification Template
@@ -339,13 +339,13 @@ async function seedTemplates() {
         },
         { new: true }
       );
-      console.log('✅ Updated "New Lead Notification" email template');
+      console.log('Updated "New Lead Notification" email template');
     } else {
       notifTemplate = await EmailTemplate.create({
         ...DEFAULT_NOTIFICATION_TEMPLATE,
         ownerId: adminUser._id,
       });
-      console.log('✅ Created "New Lead Notification" email template');
+      console.log('Created "New Lead Notification" email template');
     }
 
     // Create/Update Autoresponder Template
@@ -364,13 +364,13 @@ async function seedTemplates() {
         },
         { new: true }
       );
-      console.log('✅ Updated "Thank You Autoresponder" email template');
+      console.log('Updated "Thank You Autoresponder" email template');
     } else {
       autoTemplate = await EmailTemplate.create({
         ...DEFAULT_AUTORESPONDER_TEMPLATE,
         ownerId: adminUser._id,
       });
-      console.log('✅ Created "Thank You Autoresponder" email template');
+      console.log('Created "Thank You Autoresponder" email template');
     }
 
     console.log('\n✨ Seed complete!');
@@ -380,7 +380,7 @@ async function seedTemplates() {
 
     process.exit(0);
   } catch (err) {
-    console.error('❌ Seed failed:', err);
+    console.error(' Seed failed:', err);
     process.exit(1);
   }
 }

@@ -251,10 +251,10 @@ const requiredEnvVars = [
 
 const missing = requiredEnvVars.filter(key => !process.env[key]);
 if (missing.length > 0) {
-  console.warn('⚠️  Missing environment variables:', missing.join(', '));
+  console.warn('Missing environment variables:', missing.join(', '));
 }
 
 // Warn about ngrok URL format
 if (process.env.PUBLIC_BASE_URL?.includes('ngrok-free.dev')) {
-  console.warn('⚠️  Ngrok URL detected - these expire after a few hours. Get a fresh ngrok URL at https://ngrok.com');
+  console.warn('Ngrok URL detected - these expire after a few hours. Get a fresh ngrok URL at https://ngrok.com');
 }
