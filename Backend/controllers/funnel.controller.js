@@ -3,10 +3,7 @@ import { Funnel } from '../models/Funnel.js';
 import { Lead } from '../models/Lead.js';
 import { Campaign } from '../models/Campaign.js';
 import { CampaignRecipient } from '../models/CampaignRecipient.js';
-import { requireAuth } from '../middleware/auth.js';
 import { ensureCanConsume, incrementUsage } from '../utils/billing.js';
-
-export const funnelRouter = requireAuth;
 
 export const listFunnels = async (req, res) => {
   const funnels = await Funnel.find({ ownerId: req.user.id }).sort({ createdAt: -1 }).select('_id name slug published publishedAt createdAt');
