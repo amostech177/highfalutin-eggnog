@@ -16,7 +16,15 @@ export default function useAuth() {
     localStorage.setItem('user', JSON.stringify(nextUser))
   }
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch(`${API_BASE}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } catch (e) {
+      console.warn('Logout request failed:', e)
+    }
     setToken('')
     setUser(null)
     localStorage.removeItem('token')
@@ -27,6 +35,7 @@ export default function useAuth() {
     return async (path, { method = 'GET', body } = {}) => {
       const res = await fetch(`${API_BASE}${path}`, {
         method,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

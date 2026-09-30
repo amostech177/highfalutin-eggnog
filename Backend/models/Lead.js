@@ -14,5 +14,9 @@ const LeadSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+LeadSchema.index({ ownerId: 1, funnelId: 1, createdAt: -1 });
+LeadSchema.index({ email: 1, ownerId: 1 });
+LeadSchema.index({ createdAt: -1 });
+
 export const Lead = mongoose.model('Lead', LeadSchema);
 

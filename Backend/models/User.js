@@ -45,5 +45,8 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+UserSchema.index({ 'trial.endsAt': 1 });
+UserSchema.index({ createdAt: -1 });
+
 export const User = mongoose.model('User', UserSchema);
 
