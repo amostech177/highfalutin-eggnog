@@ -2,6 +2,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import axios from 'axios';
+import crypto from 'crypto';
+import cookieParser from 'cookie-parser';
 
 const _filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(_filename);
@@ -11,7 +13,15 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import morgan from 'morgan';
+import compression from 'compression';
+import logger from './utils/logger.js';
 import { sendEmail } from './utils/resend.js';
+
+const isProduction = process.env.NODE_ENV === 'production';
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 const mongoUri = process.env.MONGODB_URI;
 const safeMongoUri = mongoUri
@@ -19,29 +29,87 @@ const safeMongoUri = mongoUri
   : mongoUri;
 
 const app = express();
-app.use(express.json());
 
-mongoose.connect(safeMongoUri, {
-  family: 4,
-  serverSelectionTimeoutMS: 15000,
-}).then(() => {
-  console.log('Connected to MongoDB!');
-  app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/health`);
-    console.log(`Daraja token endpoint: http://localhost:${PORT}/token`);
-  });
-}).catch((err) => {
-  console.error('MongoDB connection error:', err.message);
-  console.error('Server will NOT start until MongoDB is reachable.');
-  process.exit(1);
-});
-app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',').map(s => s.trim()).filter(Boolean) ?? '*',
-  credentials: true,
+// Trust proxy for rate limiting behind reverse proxy
+app.set('trust proxy', 1);
+
+// Cookie parser
+app.use(cookieParser());
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: isProduction ? undefined : false,
+  crossOriginEmbedderPolicy: false,
 }));
 
-app.get('/health', (req, res) => res.json({ ok: true }));
+// Compression
+app.use(compression());
+
+// Logging
+app.use(morgan(isProduction ? 'combined' : 'dev'));
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 100 : 1000, // limit each IP to 100 requests per windowMs in production
+  message: { success: false, message: 'Too many requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', apiLimiter);
+
+// Stricter rate limit for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isProduction ? 10 : 100,
+  message: { success: false, message: 'Too many login attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/google', authLimiter);
+
+// Body parser
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// CORS configuration
+const corsOrigins = process.env.CORS_ORIGIN?.split(',').map(s => s.trim()).filter(Boolean) ?? [];
+app.use(cors({
+  origin: isProduction ? corsOrigins : true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// Request ID middleware for tracing
+app.use((req, res, next) => {
+  const requestId = req.headers['x-request-id'] || crypto.randomUUID();
+  req.requestId = requestId;
+  res.setHeader('X-Request-ID', requestId);
+  next();
+});
+
+// Request logging with request ID
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info({
+      requestId: req.requestId,
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    }, 'HTTP request');
+  });
+  next();
+});
+
+app.get('/health', (req, res) => res.json({ ok: true, requestId: req.requestId }));
 
 app.get('/test-email', async (req, res) => {
   await sendEmail({
@@ -144,7 +212,6 @@ app.get('/api/track/click', async (req, res) => {
     res.redirect(302, decodeURIComponent(url));
   }
 });
-
 // Public unsubscribe endpoint
 app.get('/api/unsubscribe', async (req, res) => {
   const { token, email } = req.query;
@@ -186,6 +253,7 @@ app.get('/api/unsubscribe', async (req, res) => {
 });
 
 
+// Daraja token endpoint (for M-Pesa)
 app.get("/token", async (req, res) => {
   try {
     if (!process.env.SAFARICOM_CONSUMER_KEY || !process.env.SAFARICOM_CONSUMER_SECRET) {
@@ -199,8 +267,12 @@ app.get("/token", async (req, res) => {
       `${process.env.SAFARICOM_CONSUMER_KEY}:${process.env.SAFARICOM_CONSUMER_SECRET}`
     ).toString("base64");
 
+    const baseUrl = process.env.SAFARICIM_ENV === 'production'
+      ? 'https://api.safaricom.co.ke'
+      : 'https://sandbox.safaricom.co.ke';
+
     const response = await axios.get(
-      "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
+      `${baseUrl}/oauth/v1/generate?grant_type=client_credentials`,
       {
         headers: {
           Authorization: `Basic ${auth}`,
@@ -220,10 +292,65 @@ app.get("/token", async (req, res) => {
   }
 });
 
-//console.log("KEY:", process.env.SAFARICOM_CONSUMER_KEY);
-//console.log("SECRET:", process.env.SAFARICOM_CONSUMER_SECRET);
-// console.log("ACCESS TOKEN:", access_token);
+// Test endpoints - only in development
+if (isDevelopment) {
+  app.get('/test-email', async (req, res) => {
+    await sendEmail({
+      to: "delivered@resend.dev",
+      subject: "Test",
+      html: "<h1>Hello</h1>"
+    });
+    res.send("Email sent");
+  });
 
+  app.get('/test-personalization', async (req, res) => {
+    const { name = "John", email = "test@example.com" } = req.query;
+
+    let template = "Hi {{name}}, your email is {{email}}";
+    template = template.replaceAll('{{name}}', name).replaceAll('{{email}}', email);
+
+    res.json({ success: true, template });
+  });
+
+  app.get('/test-tracking', (req, res) => {
+    const baseUrl = process.env.PUBLIC_BASE_URL || 'http://localhost:3000';
+    res.json({
+      openTrackUrl: `${baseUrl}/api/track/open?token=abc123`,
+      clickTrackUrl: `${baseUrl}/api/track/click?token=xyz789&url=https://example.com`,
+      unsubscribeUrl: `${baseUrl}/api/unsubscribe?token=xyz789&email=test%40example.com`,
+      note: "Open URL returns a 1x1 pixel; Click URL redirects; Unsubscribe records opt-out"
+    });
+  });
+
+  app.get('/test-simulate-tracking', async (req, res) => {
+    const { recipientId, type } = req.query;
+    if (!recipientId || !type) return res.status(400).json({ error: 'Missing recipientId or type' });
+
+    const { CampaignRecipient } = await import('./models/CampaignRecipient.js');
+    const recipient = await CampaignRecipient.findById(recipientId);
+    if (!recipient) return res.status(404).json({ error: 'Recipient not found' });
+
+    if (type === 'open') {
+      recipient.openedAt = new Date();
+      recipient.status = 'opened';
+      await recipient.save();
+      const { Campaign } = await import('./models/Campaign.js');
+      await Campaign.updateOne({ _id: recipient.campaignId }, { $inc: { openCount: 1 } });
+      res.json({ success: true, message: 'Open tracked' });
+    } else if (type === 'click') {
+      recipient.clickedAt = new Date();
+      recipient.status = 'clicked';
+      await recipient.save();
+      const { Campaign } = await import('./models/Campaign.js');
+      await Campaign.updateOne({ _id: recipient.campaignId }, { $inc: { clickCount: 1 } });
+      res.json({ success: true, message: 'Click tracked' });
+    } else {
+      res.status(400).json({ error: 'Invalid type (use "open" or "click")' });
+    }
+  });
+}
+
+// Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   if (res.headersSent) {
@@ -232,7 +359,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ 
     success: false, 
     message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    error: isDevelopment ? err.message : undefined
   });
 });
 
@@ -258,3 +385,42 @@ if (missing.length > 0) {
 if (process.env.PUBLIC_BASE_URL?.includes('ngrok-free.dev')) {
   console.warn('Ngrok URL detected - these expire after a few hours. Get a fresh ngrok URL at https://ngrok.com');
 }
+
+// Database connection and server startup
+mongoose.connect(safeMongoUri, {
+  family: 4,
+  serverSelectionTimeoutMS: 15000,
+}).then(() => {
+  console.log('Connected to MongoDB!');
+  
+  const server = app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Health check: http://localhost:${PORT}/health`);
+    console.log(`Daraja token endpoint: http://localhost:${PORT}/token`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+
+  // Graceful shutdown
+  const gracefulShutdown = (signal) => {
+    console.log(`${signal} received. Shutting down gracefully...`);
+    server.close(async () => {
+      console.log('HTTP server closed.');
+      await mongoose.connection.close(false);
+      console.log('MongoDB connection closed.');
+      process.exit(0);
+    });
+    
+    // Force close after 10 seconds
+    setTimeout(() => {
+      console.error('Could not close connections in time, forcefully shutting down');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+}).catch((err) => {
+  console.error('MongoDB connection error:', err.message);
+  console.error('Server will NOT start until MongoDB is reachable.');
+  process.exit(1);
+});

@@ -81,8 +81,11 @@ async function getDarajaToken() {
     throw new Error('Daraja credentials are not set');
   }
   const auth = Buffer.from(`${key}:${secret}`).toString('base64');
+  const baseUrl = process.env.SAFARICOM_ENV === 'production'
+    ? 'https://api.safaricom.co.ke'
+    : 'https://sandbox.safaricom.co.ke';
   try {
-    const { data } = await axios.get('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
+    const { data } = await axios.get(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
       headers: { Authorization: `Basic ${auth}` },
     });
     if (!data.access_token) {
@@ -165,10 +168,11 @@ export const darajaTopup = async (req, res) => {
       Password: '***'
     });
 
-    const { data } = await axios.post(
-      "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
-      payload,
-      {
+    const stkPushUrl = process.env.SAFARICOM_ENV === 'production'
+      ? 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
+      : 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
+
+    const { data } = await axios.post(stkPushUrl, payload, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json"

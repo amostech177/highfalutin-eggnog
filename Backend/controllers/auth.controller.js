@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { User } from '../models/User.js';
+import { generateToken } from '../middleware/auth.js';
 
 const RegisterSchema = z.object({
   email: z.string().email(),
@@ -24,6 +25,17 @@ function startTrial() {
   const startsAt = new Date();
   const endsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   return { startsAt, endsAt, caps: { funnelsPublished: 1, leads: 100, emails: 50 } };
+}
+
+function setAuthCookie(res, token) {
+  const isProduction = process.env.NODE_ENV === 'production';
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    path: '/',
+  });
 }
 
 export const googleAuth = async (req, res) => {
@@ -63,7 +75,8 @@ export const googleAuth = async (req, res) => {
       }
     }
 
-    const token = jwt.sign({ sub: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const token = generateToken(user._id.toString());
+    setAuthCookie(res, token);
     console.log('[googleAuth] Returning success for user:', user._id);
     res.json({
       success: true,
@@ -92,7 +105,8 @@ export const register = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(parsed.data.password, 10);
     const user = await User.create({ email, passwordHash, trial: startTrial() });
-    const token = jwt.sign({ sub: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    const token = generateToken(user._id.toString());
+    setAuthCookie(res, token);
     res.json({ success: true, token, user: { id: user._id, email: user.email } });
   } catch (err) {
     console.error('Registration error:', err);
@@ -112,11 +126,8 @@ export const login = async (req, res) => {
      const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
      if (!ok) return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
-     const token = jwt.sign(
-       { sub: user._id.toString() },
-       process.env.JWT_SECRET,
-       { expiresIn: '30d' }
-     );
+     const token = generateToken(user._id.toString());
+     setAuthCookie(res, token);
 
      res.json({ success: true, token, user: { id: user._id, email: user.email } });
    } catch (err) {
@@ -124,6 +135,17 @@ export const login = async (req, res) => {
      res.status(500).json({ success: false, message: 'Server error' });
    }
  };
+
+export const logout = async (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  res.clearCookie('token', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    path: '/',
+  });
+  res.json({ success: true, message: 'Logged out' });
+};
 
 export const getMe = async (req, res) => {
    try {
