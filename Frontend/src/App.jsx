@@ -13,6 +13,7 @@ import CampaignDetail from './pages/CampaignDetail'
 import TemplateList from './pages/TemplateList'
 import TemplateEditor from './pages/TemplateEditor'
 import Topup from './pages/Topup'
+import Help from './pages/Help'
 
 function App() {
   const auth = useAuth()
@@ -25,6 +26,7 @@ function App() {
           <Route path="/new" element={<NewFunnel auth={auth} />} />
           <Route path="/edit/:id" element={<FunnelEditor auth={auth} />} />
           <Route path="/topup" element={<Topup auth={auth} />} />
+          <Route path="/help" element={<Help />} />
           <Route path="/campaigns" element={<CampaignList auth={auth} />} />
           <Route path="/campaigns/new" element={<CampaignCreate auth={auth} />} />
           <Route path="/campaigns/:id" element={<CampaignDetail auth={auth} />} />

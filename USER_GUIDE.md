@@ -110,7 +110,7 @@ Campaigns send one email to many leads at once.
 
 Once published, your funnel is live at:
 ```
-https://<your-domain>/p/<slug>
+https://<platform-domain>/p/<slug>
 ```
 Share this link anywhere — social media, ads, email signature.
 

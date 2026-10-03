@@ -6,6 +6,13 @@ export default function Shell({ auth, children }) {
     <div className="appShell">
       <div className="topbar">
         <Link className="brand" to="/">Covex</Link>
+        <nav className="nav-links">
+          {auth.user && (
+            <>
+              <Link to="/help">Help</Link>
+            </>
+          )}
+        </nav>
         <div className="spacer" />
         {auth.user ? (
           <button className="btn" onClick={auth.logout}>Logout</button>
