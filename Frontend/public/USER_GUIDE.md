@@ -130,4 +130,4 @@ Share this link anywhere — social media, ads, email signature.
 
 ## Need Help?
 
-For support, contact the platform administrator.
+For support, email **customersupport.covex@gmail.com**.

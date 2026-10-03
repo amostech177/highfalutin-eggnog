@@ -5,7 +5,9 @@ export default function Shell({ auth, children }) {
   return (
     <div className="appShell">
       <div className="topbar">
-        <Link className="brand" to="/">Covex</Link>
+        <Link className="brand" to="/">
+          <img src="/images/Covex.png" alt="Covex" className="logo-icon" />
+        </Link>
         <nav className="nav-links">
           {auth.user && (
             <Link to="/help" className="nav-link">
