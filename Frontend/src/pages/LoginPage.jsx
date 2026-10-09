@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { app } from '../firebase'
+import { trackEvent } from '../analytics'
 
 export default function LoginPage({ auth }) {
   const nav = useNavigate()
@@ -20,6 +21,9 @@ export default function LoginPage({ auth }) {
       const path = mode === 'login' ? '/api/auth/login' : '/api/auth/register'
       const json = await auth.api(path, { method: 'POST', body: { email, password } })
       auth.login(json.token, json.user)
+      if (mode === 'register') {
+        trackEvent('signup_completed', { method: 'email' })
+      }
       nav('/')
     } catch (err) {
       setError(err.message || 'Failed')

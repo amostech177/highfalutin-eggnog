@@ -6,6 +6,7 @@ import { User } from '../models/User.js';
 import { WalletTransaction } from '../models/WalletTransaction.js';
 import { PendingTopup } from '../models/PendingTopup.js';
 import { creditWallet, debitWallet, ensureCanConsume, incrementUsage } from '../utils/billing.js';
+import { trackEvent } from '../utils/posthog.js';
 
 export const getBillingMe = async (req, res) => {
   const user = await User.findById(req.user.id).select('email trial usage wallet');
@@ -264,6 +265,8 @@ export const darajaCallback = async (req, res) => {
       reference,
       meta: { checkoutRequestId, mpesaReceipt, amount, merchantRequestId, rate: 'KSh15=1credit' },
     });
+
+    trackEvent(pending.userId.toString(), 'payment_completed', { amountKes: amount, credits: creditAmount });
   } catch (e) {
     console.error('Daraja callback error', e);
   }

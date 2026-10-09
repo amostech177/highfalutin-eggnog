@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import posthog, { posthogEnabled } from '../posthog'
 
 const API_BASE = import.meta.env.VITE_API_BASE
 
@@ -8,6 +9,20 @@ export default function useAuth() {
     const raw = localStorage.getItem('user')
     return raw ? JSON.parse(raw) : null
   })
+
+  useEffect(() => {
+    if (!posthogEnabled) return
+
+    if (user?.id) {
+      const properties = { email: user.email }
+      if (user.displayName) {
+        properties.name = user.displayName
+      }
+      posthog.identify(user.id, properties)
+    } else {
+      posthog.reset()
+    }
+  }, [user])
 
   const login = (nextToken, nextUser) => {
     setToken(nextToken)

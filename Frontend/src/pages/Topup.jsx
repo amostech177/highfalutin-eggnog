@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
+import { trackEvent } from '../analytics'
 
 const PACKAGES = [
   { kes: 15, credits: 1 },
@@ -35,6 +36,7 @@ export default function Topup({ auth }) {
     setMsg('')
     try {
       const json = await auth.api('/api/billing/daraja/topup', { method: 'POST', body: { phone, amountKes: snappedKes } })
+      trackEvent('payment_initiated', { amountKes: snappedKes, credits })
       setMsg(json.customerMessage || `STK sent. CheckoutRequestID: ${json.checkoutRequestId}`)
     } catch (e2) {
       const errorMsg = e2.details?.errorMessage || e2.message || 'Unknown error'

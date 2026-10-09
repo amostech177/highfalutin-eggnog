@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PropTypes from 'prop-types'
+import { trackEvent } from '../analytics'
 
 export default function NewFunnel({ auth }) {
   const nav = useNavigate()
@@ -15,6 +16,7 @@ export default function NewFunnel({ auth }) {
     setError('')
     try {
       const json = await auth.api('/api/funnels', { method: 'POST', body: { name, slug } })
+      trackEvent('project_created')
       nav(`/edit/${json.funnel._id}`)
     } catch (err) {
       setError(err.message)

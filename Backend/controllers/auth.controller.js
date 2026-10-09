@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { User } from '../models/User.js';
 import { generateToken } from '../middleware/auth.js';
+import { trackEvent } from '../utils/posthog.js';
 
 const RegisterSchema = z.object({
   email: z.string().email(),
@@ -64,6 +65,7 @@ export const googleAuth = async (req, res) => {
         photoURL,
         trial: startTrial(),
       });
+      trackEvent(user._id.toString(), 'user_created', { method: 'google' });
       console.log('[googleAuth] Created user:', user._id);
     } else {
       if (!user.firebaseUid) {

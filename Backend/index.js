@@ -19,6 +19,7 @@ import morgan from 'morgan';
 import compression from 'compression';
 import logger from './utils/logger.js';
 import { sendEmail } from './utils/resend.js';
+import { shutdownPostHog } from './utils/posthog.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -407,6 +408,8 @@ mongoose.connect(safeMongoUri, {
       console.log('HTTP server closed.');
       await mongoose.connection.close(false);
       console.log('MongoDB connection closed.');
+      await shutdownPostHog();
+      console.log('PostHog client closed.');
       process.exit(0);
     });
     
